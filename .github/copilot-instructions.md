@@ -1,0 +1,4 @@
+- Verify project requirements and keep the app focused on energy and waste management for companies.
+- Build a usable dashboard in Portuguese using Vite + React + TypeScript.
+- Prioritize professional UI, realistic indicators, and local persistence for demo data.
+- Validate that the project compiles successfully before concluding work.
