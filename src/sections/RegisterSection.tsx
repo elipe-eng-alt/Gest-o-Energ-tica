@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { PanelHead } from '../components/Controls';
+import type { User } from '../types';
 
 type CustomerFormState = {
   nome: string;
@@ -73,7 +74,12 @@ function validate(form: CustomerFormState) {
   return null;
 }
 
-export default function RegisterSection() {
+type Props = {
+  onRegistered: (user: User) => void;
+  onGoToLogin: () => void;
+};
+
+export default function RegisterSection({ onRegistered, onGoToLogin }: Props) {
   const [formData, setFormData] = useState<CustomerFormState>(defaultForm);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,8 +113,12 @@ export default function RegisterSection() {
         throw new Error(data.message || 'Erro ao cadastrar cliente.');
       }
 
-      setMessage({ type: 'success', message: data.message || 'Cadastro realizado com sucesso.' });
       setFormData(defaultForm);
+      if (data.user) {
+        onRegistered(data.user);
+        return;
+      }
+      setMessage({ type: 'success', message: data.message || 'Cadastro realizado com sucesso.' });
     } catch (error) {
       const fallback = 'Não foi possível conectar à API. Verifique se o servidor está em execução.';
       setMessage({
@@ -122,7 +132,7 @@ export default function RegisterSection() {
 
   return (
     <section className="panel form-panel">
-      <PanelHead label="Cadastro" title="Solicite um diagnóstico personalizado" />
+      <PanelHead label="Criar conta" title="Cadastre sua empresa e comece a lançar seu consumo" />
 
       <form className="register-form" onSubmit={handleSubmit}>
         <div className="field-grid">
@@ -148,8 +158,14 @@ export default function RegisterSection() {
         )}
 
         <button type="submit" className="primary-button submit-button" disabled={isSubmitting}>
-          {isSubmitting ? 'Cadastrando...' : 'Salvar cadastro'}
+          {isSubmitting ? 'Criando conta...' : 'Criar conta'}
         </button>
+        <p className="muted">
+          Já tem conta?{' '}
+          <button type="button" className="link-button" onClick={onGoToLogin}>
+            Entrar
+          </button>
+        </p>
       </form>
     </section>
   );

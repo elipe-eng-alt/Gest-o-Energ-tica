@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { UNITS } from '../data/demo';
-import type { Opportunity, Priority } from '../types';
+import type { Opportunity, Priority, UnitOption } from '../types';
 
 type Draft = {
   title: string;
@@ -12,33 +11,35 @@ type Draft = {
   description: string;
 };
 
-const emptyDraft: Draft = {
+const emptyDraft = (unit: string): Draft => ({
   title: '',
-  unit: UNITS[0].name,
+  unit,
   potential: '',
   savings: '',
   priority: 'media',
   due: '',
   description: '',
-};
+});
 
 type Props = {
+  units: UnitOption[];
   onCreate: (opportunity: Omit<Opportunity, 'id'>) => void;
   onCancel: () => void;
 };
 
-export default function OpportunityForm({ onCreate, onCancel }: Props) {
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
+export default function OpportunityForm({ units, onCreate, onCancel }: Props) {
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft(units[0]?.name ?? ''));
 
   const update = <K extends keyof Draft>(field: K, value: Draft[K]) => setDraft((current) => ({ ...current, [field]: value }));
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const unit = UNITS.find((item) => item.name === draft.unit) ?? UNITS[0];
+    const unit = units.find((item) => item.name === draft.unit) ?? units[0];
+    if (!unit) return;
     onCreate({
       title: draft.title.trim(),
       unit: unit.name,
-      sector: unit.area,
+      sector: unit.sector,
       potential: Number(draft.potential),
       savings: Number(draft.savings),
       priority: draft.priority,
@@ -46,7 +47,7 @@ export default function OpportunityForm({ onCreate, onCancel }: Props) {
       due: draft.due ? new Date(`${draft.due}T00:00:00`).toLocaleDateString('pt-BR') : 'A definir',
       description: draft.description.trim(),
     });
-    setDraft(emptyDraft);
+    setDraft(emptyDraft(units[0]?.name ?? ''));
   };
 
   return (
@@ -59,8 +60,8 @@ export default function OpportunityForm({ onCreate, onCancel }: Props) {
         <label>
           <span>Unidade</span>
           <select value={draft.unit} onChange={(event) => update('unit', event.target.value)}>
-            {UNITS.map((unit) => (
-              <option key={unit.id} value={unit.name}>
+            {units.map((unit) => (
+              <option key={unit.name} value={unit.name}>
                 {unit.name}
               </option>
             ))}

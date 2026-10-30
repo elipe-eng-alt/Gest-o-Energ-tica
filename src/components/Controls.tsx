@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import { AlertTriangle, Search } from 'lucide-react';
-import { UNIT_OPTIONS } from '../data/demo';
 import type { AlertItem } from '../types';
 
-export function UnitSelect({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+type UnitSelectProps = { id: string; value: string; options: string[]; onChange: (value: string) => void };
+
+export function UnitSelect({ id, value, options, onChange }: UnitSelectProps) {
   return (
     <div className="select-wrap">
       <label htmlFor={id}>Unidade</label>
       <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-        {UNIT_OPTIONS.map((option) => (
+        {options.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
@@ -34,6 +35,10 @@ export function SearchBox({ value, onChange }: { value: string; onChange: (value
 }
 
 export function AlertList({ alerts }: { alerts: Pick<AlertItem, 'title' | 'detail' | 'level'>[] }) {
+  if (!alerts.length) {
+    return <p className="empty-state">Nenhum alerta no momento.</p>;
+  }
+
   return (
     <div className="alert-list">
       {alerts.map((alert) => (

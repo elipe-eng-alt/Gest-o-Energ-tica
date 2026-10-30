@@ -4,6 +4,10 @@ Sistema web em React + TypeScript para gestão de desperdício e potenciais de e
 
 ## Funcionalidades
 
+- **Área da empresa com login**: o cadastro cria a conta e já entra; cada empresa vê só os próprios dados
+- **Lançamentos**: cadastro de unidades e lançamento mensal por unidade com os dados da fatura (consumo kWh, valor R$, consumo na ponta, demanda máxima e consumo fora do expediente/standby)
+- Alertas automáticos a partir dos lançamentos: desperdício acima de 20%, consumo 10% acima do mês anterior e uso alto no horário de ponta
+- Sem login, o sistema mostra dados de demonstração
 - Dashboard executivo com indicadores de consumo, custo e desperdício, filtráveis por período e unidade
 - Plano de ação: criar, remover e avançar o status de oportunidades de eficiência, com filtros por status, prioridade e busca
 - Desempenho por unidade com índice de eficiência e economia potencial por unidade
@@ -41,13 +45,25 @@ Sistema web em React + TypeScript para gestão de desperdício e potenciais de e
 | GET | `/api/health` | Status da API |
 | POST | `/api/customers` | Cadastra cliente e notifica o responsável |
 | GET | `/api/customers` | Lista clientes. Exige `Authorization: Bearer <ADMIN_TOKEN>` |
+| POST | `/api/auth/login` | Entra (cookie de sessão HttpOnly, 30 dias); limite de 10 tentativas a cada 15 min |
+| POST | `/api/auth/logout` | Sai |
+| GET | `/api/auth/me` | Usuário da sessão atual (ou `null`) |
+| GET | `/api/company/data` | Unidades, lançamentos e oportunidades da empresa logada |
+| POST/PUT/DELETE | `/api/company/units` | Unidades da empresa |
+| PUT | `/api/company/readings` | Cria ou atualiza o lançamento de uma unidade em um mês |
+| DELETE | `/api/company/readings/:id` | Exclui um lançamento |
+| POST/PATCH/DELETE | `/api/company/opportunities` | Oportunidades da empresa |
 
 O aviso de novo cadastro é enviado em segundo plano pelo Resend (`RESEND_API_KEY`, por HTTPS) ou, sem ele, por SMTP (`SMTP_USER`/`SMTP_PASS`). Sem nenhum dos dois, o envio é simulado e registrado no console. No Railway (planos Free/Hobby) o SMTP é bloqueado: use o Resend. O banco fica em `data/` (ou em `DATA_DIR`, se definido).
 
 ## Estrutura
 
 ```
-server/index.js        API Express + SQLite
+server/index.js        API Express: cadastro, login e arquivos do frontend
+server/db.js           Esquema do banco SQLite
+server/auth.js         Sessões e limite de tentativas
+server/company.js      Rotas da área logada (dados isolados por empresa)
+server/mail.js         Aviso de novo cadastro (Resend ou SMTP)
 src/App.tsx            Shell, navegação e estado global
 src/sections/          Telas (carregadas sob demanda)
 src/components/        Componentes reutilizáveis (listas, gráficos, controles)

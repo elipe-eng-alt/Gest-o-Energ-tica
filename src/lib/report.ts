@@ -1,10 +1,12 @@
-import { PERIOD_LABELS, UNITS } from '../data/demo';
-import type { Opportunity, Period, Summary } from '../types';
+import type { Opportunity, Summary, Unit } from '../types';
 import { CURRENCY, formatMWh, formatPercent } from './format';
 
 type ReportInput = {
-  period: Period;
+  companyName: string;
+  periodLabel: string;
+  fileSuffix: string;
   unitFilter: string;
+  units: Unit[];
   summary: Summary;
   opportunities: Opportunity[];
 };
@@ -12,7 +14,7 @@ type ReportInput = {
 const PRIORITY_WEIGHT = { alta: 0, media: 1, baixa: 2 } as const;
 
 /** Gera o PDF executivo. O jsPDF (~350 kB) só é baixado quando o usuário pede o relatório. */
-export async function generatePDFReport({ period, unitFilter, summary, opportunities }: ReportInput) {
+export async function generatePDFReport({ companyName, periodLabel, fileSuffix, unitFilter, units, summary, opportunities }: ReportInput) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -32,10 +34,10 @@ export async function generatePDFReport({ period, unitFilter, summary, opportuni
   doc.setTextColor(20, 36, 29);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('EnergiaViva - Relatório Executivo', marginX, 20);
+  doc.text(`${companyName} - Relatório Executivo`, marginX, 20);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${PERIOD_LABELS[period]} · Unidade: ${unitFilter} · Emitido em ${new Date().toLocaleDateString('pt-BR')}`, marginX, 30);
+  doc.text(`${periodLabel} · Unidade: ${unitFilter} · Emitido em ${new Date().toLocaleDateString('pt-BR')}`, marginX, 30);
 
   doc.setTextColor(60, 60, 60);
   doc.setFont('helvetica', 'bold');
@@ -88,7 +90,7 @@ export async function generatePDFReport({ period, unitFilter, summary, opportuni
     y += description.length * 5 + 5;
   });
 
-  ensureSpace(14 + UNITS.length * 7);
+  ensureSpace(14 + units.length * 7);
   y += 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
@@ -96,16 +98,16 @@ export async function generatePDFReport({ period, unitFilter, summary, opportuni
   y += 10;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  UNITS.forEach((unit) => {
+  units.forEach((unit) => {
     doc.text(
-      `- ${unit.name}: ${formatMWh(unit.consumed)} · ${CURRENCY.format(unit.cost)} · eficiência ${unit.efficiency}% · ${unit.status}`,
+      `- ${unit.name}: ${formatMWh(unit.consumed)} · ${CURRENCY.format(unit.cost)} · ${unit.status === 'sem-dados' ? 'sem dados' : `eficiência ${unit.efficiency}% · ${unit.status}`}`,
       marginX + 2,
       y,
     );
     y += 7;
   });
 
-  doc.save(`relatorio-energia-viva-${period}.pdf`);
+  doc.save(`relatorio-energia-viva-${fileSuffix}.pdf`);
 }
 
 const csvCell = (value: string | number) => {

@@ -1,4 +1,6 @@
-import type { AlertItem, EnergyPoint, Opportunity, Period, Unit } from '../types';
+import type { AlertItem, EnergyPoint, MixItem, Opportunity, PeriodOption, Unit } from '../types';
+
+export type DemoPeriod = '7d' | '30d' | '90d' | '12m';
 
 export const UNITS: Unit[] = [
   { id: 'matriz', name: 'Matriz Industrial', area: 'Produção', consumed: 12840, cost: 36420, efficiency: 82, status: 'alerta' },
@@ -8,7 +10,6 @@ export const UNITS: Unit[] = [
 ];
 
 export const ALL_UNITS = 'Todos';
-export const UNIT_OPTIONS = [ALL_UNITS, ...UNITS.map((unit) => unit.name)];
 
 export const INITIAL_OPPORTUNITIES: Opportunity[] = [
   {
@@ -67,16 +68,14 @@ export const ALERTS: AlertItem[] = [
   { id: 3, title: 'Máquinas inativas com energia residual', level: 'médio', detail: 'Trechos de produção em standby sem desligamento automático.' },
 ];
 
-export const PERIODS: Period[] = ['7d', '30d', '90d', '12m'];
+export const DEMO_PERIODS: (PeriodOption & { id: DemoPeriod })[] = [
+  { id: '7d', short: '7d', label: 'Últimos 7 dias' },
+  { id: '30d', short: '30d', label: 'Últimos 30 dias' },
+  { id: '90d', short: '90d', label: 'Últimos 90 dias' },
+  { id: '12m', short: '12m', label: 'Últimos 12 meses' },
+];
 
-export const PERIOD_LABELS: Record<Period, string> = {
-  '7d': 'Últimos 7 dias',
-  '30d': 'Últimos 30 dias',
-  '90d': 'Últimos 90 dias',
-  '12m': 'Últimos 12 meses',
-};
-
-export const CHART_DATA: Record<Period, EnergyPoint[]> = {
+export const CHART_DATA: Record<DemoPeriod, EnergyPoint[]> = {
   '7d': [
     { month: 'Seg', consumo: 2210, desperdicio: 430, custo: 6340 },
     { month: 'Ter', consumo: 2540, desperdicio: 510, custo: 6960 },
@@ -112,7 +111,7 @@ export const CHART_DATA: Record<Period, EnergyPoint[]> = {
   ],
 };
 
-export const CONSUMPTION_MIX = [
+export const CONSUMPTION_MIX: MixItem[] = [
   { name: 'Uso produtivo', value: 68, color: '#38b984' },
   { name: 'Desperdício', value: 21, color: '#ef6d5a' },
   { name: 'Standby', value: 11, color: '#f4d35e' },

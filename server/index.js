@@ -1,11 +1,12 @@
 import express from 'express';
-import cors from 'cors';
-import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { openDatabase, isUniqueViolation } from './db.js';
+import { createAuth, createRateLimiter } from './auth.js';
+import { createCompanyRouter } from './company.js';
+import { sendOwnerNotification } from './mail.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,34 +18,22 @@ if (fs.existsSync(envPath)) {
 }
 
 const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(projectRoot, 'data');
-const dbPath = path.join(dataDir, 'energy-viva.db');
-
-fs.mkdirSync(dataDir, { recursive: true });
+const { db, dbPath } = openDatabase(dataDir);
+console.log('SQLite inicializado em:', dbPath);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Hash de referência: comparar contra ele quando o e-mail não existe evita revelar quais e-mails têm conta.
+const DUMMY_HASH = bcrypt.hashSync('energia-viva-dummy-password', 10);
 
-app.use(cors());
+// Atrás do proxy do Railway: faz req.secure refletir HTTPS (cookie com flag Secure).
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '100kb' }));
 
-const db = new DatabaseSync(dbPath);
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    company_name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT NOT NULL,
-    document TEXT NOT NULL,
-    sector TEXT NOT NULL,
-    position TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-console.log('SQLite inicializado em:', dbPath);
+const auth = createAuth(db);
+const loginAllowed = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
+const signupAllowed = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
 
 const listCustomers = db.prepare(
   'SELECT id, name, company_name, email, phone, document, sector, position, created_at FROM customers ORDER BY created_at DESC',
@@ -52,76 +41,9 @@ const listCustomers = db.prepare(
 const insertCustomer = db.prepare(
   'INSERT INTO customers (name, company_name, email, phone, document, sector, position, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
 );
-
-const getOwnerEmail = () => process.env.OWNER_EMAIL || 'owner@empresa.com';
-const hasSmtpCredentials = () => Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
-
-const transporter = hasSmtpCredentials()
-  ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT || 587) === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 15_000,
-    })
-  : null;
-
-// Resend envia por HTTPS. Hospedagens como o Railway (planos Free/Hobby) bloqueiam SMTP.
-async function sendWithResend(message) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: process.env.MAIL_FROM || 'EnergiaViva <onboarding@resend.dev>',
-      to: [message.to],
-      reply_to: message.replyTo,
-      subject: message.subject,
-      text: message.text,
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(`Resend respondeu ${response.status}: ${data.message || JSON.stringify(data)}`);
-  }
-  return { provider: 'resend', id: data.id };
-}
-
-async function sendOwnerNotification(customer) {
-  const message = {
-    to: getOwnerEmail(),
-    replyTo: customer.email,
-    subject: 'Novo cliente cadastrado no EnergiaViva',
-    text: [
-      'Novo cadastro realizado no portal.',
-      '',
-      `Nome: ${customer.name}`,
-      `Empresa: ${customer.company_name}`,
-      `E-mail: ${customer.email}`,
-      `Telefone: ${customer.phone}`,
-      `Cargo: ${customer.position}`,
-      `Setor: ${customer.sector}`,
-    ].join('\n'),
-  };
-
-  if (process.env.RESEND_API_KEY) {
-    return sendWithResend(message);
-  }
-
-  if (transporter) {
-    const info = await transporter.sendMail({ from: process.env.SMTP_USER, ...message });
-    return { provider: 'smtp', id: info.messageId };
-  }
-
-  console.log('Simulando envio de e-mail para o owner:', { to: message.to, subject: message.subject });
-  return { provider: 'simulado' };
-}
+const findCustomerByEmail = db.prepare(
+  'SELECT id, name, company_name AS companyName, email, password_hash AS passwordHash FROM customers WHERE email = ?',
+);
 
 function requireAdmin(req, res, next) {
   const token = process.env.ADMIN_TOKEN;
@@ -143,12 +65,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/customers', requireAdmin, (req, res) => {
-  try {
-    res.json(listCustomers.all());
-  } catch (error) {
-    console.error('Erro ao listar clientes:', error);
-    res.status(500).json({ message: 'Erro ao listar clientes.' });
-  }
+  res.json(listCustomers.all());
 });
 
 app.post('/api/customers', async (req, res) => {
@@ -182,30 +99,79 @@ app.post('/api/customers', async (req, res) => {
     return res.status(400).json({ message: 'As senhas não conferem.' });
   }
 
+  if (!signupAllowed(req.ip)) {
+    return res.status(429).json({ message: 'Muitos cadastros a partir desta rede. Tente novamente mais tarde.' });
+  }
+
+  let customerId;
   try {
     const passwordHash = await bcrypt.hash(senha, 10);
-    insertCustomer.run(nome, empresa, email, telefone, document, setor, cargo, passwordHash);
+    customerId = Number(insertCustomer.run(nome, empresa, email, telefone, document, setor, cargo, passwordHash).lastInsertRowid);
   } catch (error) {
-    if (error?.code === 'ERR_SQLITE_ERROR' && String(error.message).includes('UNIQUE')) {
-      return res.status(409).json({ message: 'Este e-mail já foi cadastrado.' });
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ message: 'Este e-mail já foi cadastrado. Use "Entrar" para acessar sua conta.' });
     }
 
     console.error('Erro no cadastro:', error);
     return res.status(500).json({ message: 'Erro ao salvar o cadastro.' });
   }
 
+  // Cadastro concluído já entra na conta da empresa.
+  auth.startSession(req, res, customerId);
+  res.status(201).json({
+    message: 'Cadastro realizado com sucesso.',
+    user: { id: customerId, name: nome, companyName: empresa, email },
+  });
+
   const customer = { name: nome, company_name: empresa, email, phone: telefone, position: cargo, sector: setor };
-
-  // O cadastro já está salvo: responde na hora e notifica a equipe em segundo plano.
-  res.status(201).json({ message: 'Cadastro realizado com sucesso. Nossa equipe entrará em contato.' });
-
   sendOwnerNotification(customer)
     .then((result) => console.log('Notificação de cadastro enviada:', result))
     .catch((mailError) => console.error('Erro ao enviar e-mail:', mailError.message));
 });
 
+app.post('/api/auth/login', async (req, res) => {
+  const email = asText(req.body?.email).toLowerCase();
+  const senha = typeof req.body?.senha === 'string' ? req.body.senha : '';
+
+  if (!email || !senha) {
+    return res.status(400).json({ message: 'Informe e-mail e senha.' });
+  }
+
+  if (!loginAllowed(`${req.ip}|${email}`)) {
+    return res.status(429).json({ message: 'Muitas tentativas. Aguarde 15 minutos e tente novamente.' });
+  }
+
+  const customer = findCustomerByEmail.get(email);
+  const valid = await bcrypt.compare(senha, customer?.passwordHash ?? DUMMY_HASH);
+  if (!customer || !valid) {
+    return res.status(401).json({ message: 'E-mail ou senha incorretos.' });
+  }
+
+  auth.startSession(req, res, customer.id);
+  res.json({ user: { id: customer.id, name: customer.name, companyName: customer.companyName, email: customer.email } });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  auth.endSession(req, res);
+  res.json({ ok: true });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  res.json({ user: auth.currentUser(req) });
+});
+
+app.use('/api/company', createCompanyRouter(db, auth.requireUser));
+
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Rota da API não encontrada.' });
+});
+
+// Erros não tratados nas rotas: registra e responde sem expor detalhes.
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.type === 'entity.parse.failed') return res.status(400).json({ message: 'JSON inválido.' });
+  console.error('Erro na requisição:', error);
+  res.status(500).json({ message: 'Erro interno. Tente novamente.' });
 });
 
 const distPath = path.resolve(projectRoot, 'dist');

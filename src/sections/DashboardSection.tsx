@@ -3,21 +3,25 @@ import { ConsumptionChart, ConsumptionMixChart, CostChart } from '../components/
 import { AlertList, PanelHead, SearchBox, UnitSelect } from '../components/Controls';
 import OpportunityList from '../components/OpportunityList';
 import UnitTable from '../components/UnitTable';
-import { ALERTS, CONSUMPTION_MIX } from '../data/demo';
 import { CURRENCY, formatMWh, formatPercent } from '../lib/format';
-import type { EnergyPoint, Opportunity, Summary, Unit } from '../types';
+import type { AlertItem, EnergyPoint, MixItem, Opportunity, Summary, Unit } from '../types';
 
 type Props = {
   series: EnergyPoint[];
   summary: Summary;
   units: Unit[];
   opportunities: Opportunity[];
+  alerts: AlertItem[];
+  mix: MixItem[];
+  unitOptions: string[];
   unitFilter: string;
   onUnitFilterChange: (value: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
   onAdvance: (id: number) => void;
 };
+
+const PRICE = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
 
 function trendLabel(series: EnergyPoint[]) {
   if (series.length < 2 || !series[0].consumo) return 'Sem histórico suficiente';
@@ -30,6 +34,9 @@ export default function DashboardSection({
   summary,
   units,
   opportunities,
+  alerts,
+  mix,
+  unitOptions,
   unitFilter,
   onUnitFilterChange,
   search,
@@ -41,7 +48,9 @@ export default function DashboardSection({
     {
       label: 'Custo energético',
       value: CURRENCY.format(summary.totalCost),
-      detail: 'Custos com contratos e demanda',
+      detail: summary.totalConsumption
+        ? `${PRICE.format(summary.totalCost / summary.totalConsumption)} por kWh em média`
+        : 'Sem consumo no período',
       icon: <CircleDollarSign size={18} />,
       tone: 'amber',
     },
@@ -79,7 +88,7 @@ export default function DashboardSection({
       <section className="panel-grid main-panel-grid">
         <article className="panel large-panel">
           <PanelHead label="Evolução de consumo" title="Energia x desperdício">
-            <UnitSelect id="dashboard-unit" value={unitFilter} onChange={onUnitFilterChange} />
+            <UnitSelect id="dashboard-unit" value={unitFilter} options={unitOptions} onChange={onUnitFilterChange} />
           </PanelHead>
           <div className="chart-wrap">
             <ConsumptionChart data={series} />
@@ -89,10 +98,10 @@ export default function DashboardSection({
         <article className="panel side-panel">
           <PanelHead label="Mix de consumo" title="Distribuição" />
           <div className="pie-chart-wrap">
-            <ConsumptionMixChart />
+            <ConsumptionMixChart data={mix} />
           </div>
           <ul className="legend-list">
-            {CONSUMPTION_MIX.map((item) => (
+            {mix.map((item) => (
               <li key={item.name}>
                 <span className="legend-dot" style={{ background: item.color }} />
                 {item.name}
@@ -113,7 +122,7 @@ export default function DashboardSection({
 
         <article className="panel side-panel">
           <PanelHead label="Alertas ativos" title="Monitoramento" />
-          <AlertList alerts={ALERTS} />
+          <AlertList alerts={alerts} />
         </article>
       </section>
 

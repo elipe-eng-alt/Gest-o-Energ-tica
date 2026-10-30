@@ -296,6 +296,7 @@ button {
 
 .main-content {
   padding: 30px 32px 24px;
+  min-width: 0;
 }
 
 .topbar {
@@ -957,6 +958,171 @@ textarea:focus-visible {
   text-align: right;
 }
 
+.app-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.demo-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(106, 124, 255, 0.3);
+  background: rgba(106, 124, 255, 0.08);
+  color: var(--text);
+}
+
+.demo-banner .primary-button,
+.demo-banner .secondary-button {
+  padding: 9px 14px;
+  box-shadow: none;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.user-card div {
+  min-width: 0;
+}
+
+.user-card strong,
+.user-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card small {
+  color: var(--muted);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary-dark);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.form-message.info {
+  background: rgba(106, 124, 255, 0.1);
+  color: var(--blue-text);
+  margin: 0 0 16px;
+}
+
+.login-panel {
+  max-width: 520px;
+}
+
+.section-intro {
+  margin: -6px 0 18px;
+}
+
+.field-hint {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.field-grid.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.field-grid.align-end {
+  align-items: end;
+}
+
+.add-unit-button {
+  height: 46px;
+}
+
+.register-form input[type='month'] {
+  min-height: 46px;
+}
+
+.onboarding-panel {
+  max-width: 760px;
+}
+
+.onboarding-panel h3 {
+  margin: 0 0 12px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.4rem;
+}
+
+.onboarding-panel ol {
+  margin: 0 0 20px;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.signal.sem-dados {
+  background: var(--surface-alt);
+  color: var(--muted);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.data-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.row-actions .icon-button {
+  width: 34px;
+  height: 34px;
+}
+
 @media (max-width: 1180px) {
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -971,7 +1137,7 @@ textarea:focus-visible {
 
 @media (max-width: 860px) {
   .app-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sidebar {
@@ -1026,6 +1192,10 @@ textarea:focus-visible {
     grid-column: auto;
   }
 
+  .field-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+
   .status-bar-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1070,6 +1240,11 @@ textarea:focus-visible {
 
   .unit-row {
     min-width: 500px;
+  }
+
+  .unit-row.compact-row {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
   .topbar h2 {

@@ -5,10 +5,12 @@ import OpportunityForm from '../components/OpportunityForm';
 import OpportunityList from '../components/OpportunityList';
 import { STATUS_ORDER } from '../lib/energy';
 import { CURRENCY } from '../lib/format';
-import type { Opportunity, Priority, Status } from '../types';
+import type { Opportunity, Priority, Status, UnitOption } from '../types';
 
 type Props = {
   opportunities: Opportunity[];
+  units: UnitOption[];
+  unitOptions: string[];
   unitFilter: string;
   onUnitFilterChange: (value: string) => void;
   search: string;
@@ -16,13 +18,16 @@ type Props = {
   onAdvance: (id: number) => void;
   onRemove: (id: number) => void;
   onCreate: (opportunity: Omit<Opportunity, 'id'>) => void;
-  onReset: () => void;
-};
+  /** Só na demonstração: volta aos dados iniciais. */
+  onReset?: () => void;
+}
 
 const PRIORITIES: Priority[] = ['alta', 'media', 'baixa'];
 
 export default function OpportunitiesSection({
   opportunities,
+  units,
+  unitOptions,
   unitFilter,
   onUnitFilterChange,
   search,
@@ -58,7 +63,7 @@ export default function OpportunitiesSection({
   };
 
   const handleReset = () => {
-    if (window.confirm('Restaurar as oportunidades de demonstração? As alterações locais serão perdidas.')) onReset();
+    if (onReset && window.confirm('Restaurar as oportunidades de demonstração? As alterações locais serão perdidas.')) onReset();
   };
 
   return (
@@ -66,7 +71,7 @@ export default function OpportunitiesSection({
       <PanelHead label="Oportunidades" title="Prioridade de ação">
         <div className="toolbar">
           <SearchBox value={search} onChange={onSearchChange} />
-          <UnitSelect id="opportunities-unit" value={unitFilter} onChange={onUnitFilterChange} />
+          <UnitSelect id="opportunities-unit" value={unitFilter} options={unitOptions} onChange={onUnitFilterChange} />
         </div>
       </PanelHead>
 
@@ -104,10 +109,12 @@ export default function OpportunitiesSection({
           {visible.length} {visible.length === 1 ? 'oportunidade' : 'oportunidades'} · {CURRENCY.format(visibleSavings)} em economia estimada
         </span>
         <div className="footer-actions">
-          <button type="button" className="secondary-button with-icon" onClick={handleReset}>
-            <RotateCcw size={15} /> Restaurar demo
-          </button>
-          {!showForm && (
+          {onReset && (
+            <button type="button" className="secondary-button with-icon" onClick={handleReset}>
+              <RotateCcw size={15} /> Restaurar demo
+            </button>
+          )}
+          {!showForm && units.length > 0 && (
             <button type="button" className="primary-button with-icon" onClick={() => setShowForm(true)}>
               <Plus size={16} /> Nova oportunidade
             </button>
@@ -115,7 +122,8 @@ export default function OpportunitiesSection({
         </div>
       </div>
 
-      {showForm && <OpportunityForm onCreate={handleCreate} onCancel={() => setShowForm(false)} />}
+      {!units.length && <p className="form-message info">Cadastre uma unidade em <b>Lançamentos</b> para registrar oportunidades.</p>}
+      {showForm && <OpportunityForm units={units} onCreate={handleCreate} onCancel={() => setShowForm(false)} />}
 
       <OpportunityList opportunities={visible} onAdvance={onAdvance} onRemove={onRemove} />
     </section>

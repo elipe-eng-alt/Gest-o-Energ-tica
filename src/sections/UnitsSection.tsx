@@ -7,16 +7,17 @@ import type { Opportunity, Unit } from '../types';
 type Props = {
   units: Unit[];
   opportunities: Opportunity[];
+  unitOptions: string[];
   unitFilter: string;
   onUnitFilterChange: (value: string) => void;
 };
 
-export default function UnitsSection({ units, opportunities, unitFilter, onUnitFilterChange }: Props) {
+export default function UnitsSection({ units, opportunities, unitOptions, unitFilter, onUnitFilterChange }: Props) {
   return (
     <>
       <section className="panel section-gap">
         <PanelHead label="Unidades" title="Performance por setor">
-          <UnitSelect id="units-unit" value={unitFilter} onChange={onUnitFilterChange} />
+          <UnitSelect id="units-unit" value={unitFilter} options={unitOptions} onChange={onUnitFilterChange} />
         </PanelHead>
         <UnitTable units={units} />
       </section>

@@ -13,9 +13,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { CONSUMPTION_MIX } from '../data/demo';
 import { CURRENCY, formatKWh } from '../lib/format';
-import type { EnergyPoint, Unit } from '../types';
+import type { EnergyPoint, MixItem, Unit } from '../types';
 
 const compactNumber = new Intl.NumberFormat('pt-BR', { notation: 'compact' });
 const formatAxis = (value: number) => compactNumber.format(value);
@@ -34,7 +33,7 @@ export function ConsumptionChart({ data }: { data: EnergyPoint[] }) {
         </defs>
         <CartesianGrid strokeDasharray="4 4" vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
-        <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={48} />
+        <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={60} />
         <Tooltip formatter={(value: number, name: string) => [formatKWh(value), SERIES_LABELS[name] ?? name]} />
         <Legend formatter={(name: string) => SERIES_LABELS[name] ?? name} iconType="circle" />
         <Area type="monotone" dataKey="consumo" stroke="#2b8a67" fill="url(#energyFill)" strokeWidth={3} />
@@ -44,12 +43,12 @@ export function ConsumptionChart({ data }: { data: EnergyPoint[] }) {
   );
 }
 
-export function ConsumptionMixChart() {
+export function ConsumptionMixChart({ data }: { data: MixItem[] }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <PieChart>
-        <Pie data={CONSUMPTION_MIX} dataKey="value" innerRadius={50} outerRadius={76} paddingAngle={4}>
-          {CONSUMPTION_MIX.map((entry) => (
+        <Pie data={data} dataKey="value" innerRadius={50} outerRadius={76} paddingAngle={4}>
+          {data.map((entry) => (
             <Cell key={entry.name} fill={entry.color} />
           ))}
         </Pie>
@@ -65,7 +64,7 @@ export function CostChart({ data }: { data: EnergyPoint[] }) {
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="4 4" vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
-        <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={48} />
+        <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={60} />
         <Tooltip formatter={(value: number) => [CURRENCY.format(value), 'Custo']} />
         <Bar dataKey="custo" radius={[10, 10, 0, 0]} fill="#6a7cff" />
       </BarChart>
@@ -73,7 +72,12 @@ export function CostChart({ data }: { data: EnergyPoint[] }) {
   );
 }
 
-const EFFICIENCY_COLORS: Record<Unit['status'], string> = { ok: '#38b984', alerta: '#f6b14a', risco: '#ef6d5a' };
+const EFFICIENCY_COLORS: Record<Unit['status'], string> = {
+  ok: '#38b984',
+  alerta: '#f6b14a',
+  risco: '#ef6d5a',
+  'sem-dados': '#9cb0a8',
+};
 
 export function EfficiencyChart({ units }: { units: Unit[] }) {
   return (

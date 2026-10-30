@@ -1,7 +1,8 @@
-export type Period = '7d' | '30d' | '90d' | '12m';
 export type Status = 'pendente' | 'em andamento' | 'concluída';
 export type Priority = 'alta' | 'media' | 'baixa';
-export type NavSection = 'dashboard' | 'oportunidades' | 'unidades' | 'relatorios' | 'cadastro';
+export type NavSection = 'dashboard' | 'lancamentos' | 'oportunidades' | 'unidades' | 'relatorios' | 'cadastro' | 'entrar';
+
+export type PeriodOption = { id: string; short: string; label: string };
 
 export type Unit = {
   id: string;
@@ -10,7 +11,7 @@ export type Unit = {
   consumed: number;
   cost: number;
   efficiency: number;
-  status: 'ok' | 'alerta' | 'risco';
+  status: 'ok' | 'alerta' | 'risco' | 'sem-dados';
 };
 
 export type Opportunity = {
@@ -40,6 +41,8 @@ export type EnergyPoint = {
   custo: number;
 };
 
+export type MixItem = { name: string; value: number; color: string };
+
 export type Summary = {
   totalConsumption: number;
   totalWaste: number;
@@ -48,3 +51,31 @@ export type Summary = {
   savingsRealized: number;
   wasteRate: number;
 };
+
+export type User = { id: number; name: string; companyName: string; email: string };
+
+export type CompanyUnit = { id: number; name: string; sector: string };
+
+/** Lançamento mensal de uma unidade (dados da fatura de energia). */
+export type Reading = {
+  id: number;
+  unitId: number;
+  month: string;
+  consumptionKwh: number;
+  cost: number;
+  peakKwh: number | null;
+  demandKw: number | null;
+  offHoursKwh: number | null;
+  notes: string;
+};
+
+export type CompanyOpportunity = Opportunity & { unitId: number | null };
+
+export type CompanyData = {
+  units: CompanyUnit[];
+  readings: Reading[];
+  opportunities: CompanyOpportunity[];
+};
+
+/** Unidade como aparece em formulários (nome e setor). */
+export type UnitOption = { name: string; sector: string };

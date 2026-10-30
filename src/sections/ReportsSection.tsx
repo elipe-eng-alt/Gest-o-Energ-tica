@@ -1,12 +1,11 @@
 import { FileSpreadsheet, FileText } from 'lucide-react';
 import { AlertList, PanelHead } from '../components/Controls';
-import { PERIOD_LABELS } from '../data/demo';
 import { STATUS_ORDER, savingsByStatus } from '../lib/energy';
 import { CURRENCY, formatMWh, formatPercent } from '../lib/format';
-import type { Opportunity, Period, Summary } from '../types';
+import type { Opportunity, Summary } from '../types';
 
 type Props = {
-  period: Period;
+  periodLabel: string;
   unitFilter: string;
   summary: Summary;
   opportunities: Opportunity[];
@@ -15,7 +14,7 @@ type Props = {
   onExportCSV: () => void;
 };
 
-export default function ReportsSection({ period, unitFilter, summary, opportunities, isGenerating, onGeneratePDF, onExportCSV }: Props) {
+export default function ReportsSection({ periodLabel, unitFilter, summary, opportunities, isGenerating, onGeneratePDF, onExportCSV }: Props) {
   const byStatus = savingsByStatus(opportunities);
   const realizedRate = summary.savingsPotential ? (summary.savingsRealized / summary.savingsPotential) * 100 : 0;
 
@@ -33,7 +32,7 @@ export default function ReportsSection({ period, unitFilter, summary, opportunit
           </div>
         </PanelHead>
         <p className="muted report-scope">
-          Escopo: {PERIOD_LABELS[period]} · Unidade: {unitFilter}
+          Escopo: {periodLabel} · Unidade: {unitFilter}
         </p>
 
         <AlertList

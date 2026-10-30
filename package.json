@@ -1,7 +1,7 @@
 {
   "name": "energiaviva-gestao-energetica",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "engines": {
     "node": ">=22.13"
@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.0",
-    "cors": "^2.8.5",
     "express": "^5.1.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
