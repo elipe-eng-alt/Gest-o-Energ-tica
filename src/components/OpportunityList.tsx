@@ -1,13 +1,7 @@
 import { memo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { CURRENCY } from '../lib/format';
-import type { Opportunity, Priority } from '../types';
-
-const PRIORITY_COLORS: Record<Priority, string> = {
-  alta: '#d9452f',
-  media: '#b77200',
-  baixa: '#1f8a5f',
-};
+import type { Opportunity } from '../types';
 
 type Props = {
   opportunities: Opportunity[];
@@ -26,12 +20,7 @@ function OpportunityList({ opportunities, onAdvance, onRemove }: Props) {
         <div key={opportunity.id} className="opportunity-item">
           <div className="opportunity-main">
             <div className="title-group">
-              <span
-                className="badge priority"
-                style={{ background: `${PRIORITY_COLORS[opportunity.priority]}1f`, color: PRIORITY_COLORS[opportunity.priority] }}
-              >
-                {opportunity.priority}
-              </span>
+              <span className={`badge priority ${opportunity.priority}`}>{opportunity.priority}</span>
               <h4>{opportunity.title}</h4>
             </div>
             <p>{opportunity.description}</p>

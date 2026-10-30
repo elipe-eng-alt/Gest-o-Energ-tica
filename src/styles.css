@@ -2,8 +2,9 @@
   font-family: 'DM Sans', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #18312e;
-  background: #eff5f1;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -22,6 +23,128 @@
   --warning: #f6b14a;
   --success: #3bbf8c;
   --shadow: 0 18px 42px rgba(35, 66, 53, 0.12);
+  --card-shadow: 0 16px 30px rgba(18, 42, 33, 0.04);
+  --primary-strong: #1f6b53;
+  --app-gradient: linear-gradient(180deg, #f5f8f4 0%, #edf2ee 100%);
+  --sidebar-bg: rgba(255, 255, 255, 0.55);
+  --card-gradient: linear-gradient(180deg, #f9fbfa, #eef7f2);
+  --item-gradient: linear-gradient(180deg, #ffffff, #f7faf6);
+  --balance-gradient: linear-gradient(135deg, #edf8f3, #f4f8ff);
+  --row-bg: #fafcfb;
+  --input-bg: #f7faf8;
+  --amber-text: #b26a00;
+  --blue-text: #4d5de0;
+  --danger-text: #b63c2d;
+}
+
+/* Modo escuro: o atributo é definido em index.html (antes do React) e pelo botão da barra lateral. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0e1513;
+  --surface: #16201c;
+  --surface-soft: #1b2722;
+  --surface-alt: #1f2d27;
+  --primary: #2f9a73;
+  --primary-dark: #74d4a9;
+  --secondary: #929eff;
+  --text: #e3eee9;
+  --muted: #9cb0a8;
+  --line: #2a3a33;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+  --card-shadow: 0 16px 30px rgba(0, 0, 0, 0.25);
+  --app-gradient: linear-gradient(180deg, #111a17 0%, #0c1210 100%);
+  --sidebar-bg: rgba(22, 32, 28, 0.7);
+  --card-gradient: linear-gradient(180deg, #1b2722, #17231e);
+  --item-gradient: linear-gradient(180deg, #19241f, #16201c);
+  --balance-gradient: linear-gradient(135deg, #17271f, #1a1f2e);
+  --row-bg: #19241f;
+  --input-bg: #121b18;
+  --amber-text: #f2c063;
+  --blue-text: #a9b2ff;
+  --danger-text: #ff9b8b;
+}
+
+.theme-toggle {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  width: 100%;
+}
+
+.theme-toggle .switch {
+  margin-left: auto;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--line);
+  position: relative;
+  transition: background 0.2s;
+}
+
+.theme-toggle .switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.theme-toggle[aria-checked='true'] .switch {
+  background: var(--primary);
+}
+
+.theme-toggle[aria-checked='true'] .switch::after {
+  transform: translateX(16px);
+}
+
+/* Recharts usa atributos SVG fixos; estas regras adaptam grade, eixos e tooltip ao tema. */
+.recharts-cartesian-grid line {
+  stroke: var(--line);
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: var(--muted);
+}
+
+.recharts-pie-sector path {
+  stroke: var(--surface);
+}
+
+.recharts-default-tooltip {
+  background: var(--surface) !important;
+  border-color: var(--line) !important;
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.recharts-tooltip-cursor {
+  fill: var(--surface-alt);
+}
+
+.badge.priority.alta {
+  background: rgba(239, 109, 90, 0.14);
+  color: var(--danger-text);
+}
+
+.badge.priority.media {
+  background: rgba(246, 177, 74, 0.14);
+  color: var(--amber-text);
+}
+
+.badge.priority.baixa {
+  background: rgba(59, 191, 140, 0.14);
+  color: var(--primary-dark);
 }
 
 * {
@@ -52,11 +175,11 @@ button {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
-  background: linear-gradient(180deg, #f5f8f4 0%, #edf2ee 100%);
+  background: var(--app-gradient);
 }
 
 .sidebar {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--line);
   padding: 34px 20px 22px;
   display: flex;
@@ -128,7 +251,7 @@ button {
 }
 
 .mini-card {
-  background: linear-gradient(180deg, #f9fbfa, #eef7f2);
+  background: var(--card-gradient);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 18px 16px;
@@ -224,7 +347,7 @@ button {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
   color: white;
   padding: 12px 18px;
   box-shadow: var(--shadow);
@@ -251,7 +374,7 @@ button {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  box-shadow: 0 12px 22px rgba(15, 48, 38, 0.04);
+  box-shadow: var(--card-shadow);
 }
 
 .kpi-card span {
@@ -287,7 +410,7 @@ button {
 
 .kpi-card.amber .kpi-icon {
   background: rgba(246, 177, 74, 0.12);
-  color: #c68419;
+  color: var(--amber-text);
 }
 
 .kpi-card.red .kpi-icon {
@@ -327,7 +450,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 20px;
-  box-shadow: 0 16px 30px rgba(18, 42, 33, 0.04);
+  box-shadow: var(--card-shadow);
 }
 
 .panel-head {
@@ -406,7 +529,7 @@ button {
 .opportunity-item {
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff, #f7faf6);
+  background: var(--item-gradient);
   padding: 16px;
 }
 
@@ -476,7 +599,7 @@ button {
 
 .status-pill.em-andamento {
   background: rgba(246, 177, 74, 0.12);
-  color: #b26a00;
+  color: var(--amber-text);
 }
 
 .status-pill.concluída {
@@ -486,7 +609,7 @@ button {
 
 .status-pill.pendente {
   background: rgba(111, 123, 255, 0.08);
-  color: #4e5ec6;
+  color: var(--blue-text);
 }
 
 .legend-list {
@@ -552,12 +675,12 @@ button {
 
 .alert-icon.alto {
   background: rgba(246, 177, 74, 0.14);
-  color: #b77200;
+  color: var(--amber-text);
 }
 
 .alert-icon.médio {
   background: rgba(106, 124, 255, 0.1);
-  color: #4d5de0;
+  color: var(--blue-text);
 }
 
 .unit-table {
@@ -573,7 +696,7 @@ button {
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fafcfb;
+  background: var(--row-bg);
   padding: 14px 12px;
 }
 
@@ -600,7 +723,7 @@ button {
 
 .signal.alerta {
   background: rgba(246, 177, 74, 0.12);
-  color: #b26a00;
+  color: var(--amber-text);
 }
 
 .signal.risco {
@@ -614,7 +737,7 @@ button {
 }
 
 .footer-balance {
-  background: linear-gradient(135deg, #edf8f3, #f4f8ff);
+  background: var(--balance-gradient);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 12px 16px;
@@ -651,7 +774,7 @@ button {
 
 .register-form input {
   border: 1px solid var(--line);
-  background: #f7faf8;
+  background: var(--input-bg);
   border-radius: 12px;
   padding: 12px 14px;
   color: var(--text);
@@ -676,7 +799,7 @@ button {
 
 .form-message.error {
   background: rgba(239, 109, 90, 0.12);
-  color: #b63c2d;
+  color: var(--danger-text);
 }
 
 .submit-button {
@@ -805,7 +928,7 @@ textarea:focus-visible {
 .register-form select,
 .register-form textarea {
   border: 1px solid var(--line);
-  background: #f7faf8;
+  background: var(--input-bg);
   border-radius: 12px;
   padding: 12px 14px;
   color: var(--text);

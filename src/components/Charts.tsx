@@ -17,7 +17,6 @@ import { CONSUMPTION_MIX } from '../data/demo';
 import { CURRENCY, formatKWh } from '../lib/format';
 import type { EnergyPoint, Unit } from '../types';
 
-const GRID_COLOR = '#dfe8e3';
 const compactNumber = new Intl.NumberFormat('pt-BR', { notation: 'compact' });
 const formatAxis = (value: number) => compactNumber.format(value);
 
@@ -33,7 +32,7 @@ export function ConsumptionChart({ data }: { data: EnergyPoint[] }) {
             <stop offset="95%" stopColor="#38b984" stopOpacity={0.04} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="4 4" stroke={GRID_COLOR} vertical={false} />
+        <CartesianGrid strokeDasharray="4 4" vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={48} />
         <Tooltip formatter={(value: number, name: string) => [formatKWh(value), SERIES_LABELS[name] ?? name]} />
@@ -64,7 +63,7 @@ export function CostChart({ data }: { data: EnergyPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="4 4" stroke={GRID_COLOR} vertical={false} />
+        <CartesianGrid strokeDasharray="4 4" vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} tickFormatter={formatAxis} width={48} />
         <Tooltip formatter={(value: number) => [CURRENCY.format(value), 'Custo']} />
@@ -80,7 +79,7 @@ export function EfficiencyChart({ units }: { units: Unit[] }) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={units} layout="vertical" margin={{ left: 8, right: 16 }}>
-        <CartesianGrid strokeDasharray="4 4" stroke={GRID_COLOR} horizontal={false} />
+        <CartesianGrid strokeDasharray="4 4" horizontal={false} />
         <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} unit="%" />
         <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={140} />
         <Tooltip formatter={(value: number) => [`${value}%`, 'Eficiência']} />

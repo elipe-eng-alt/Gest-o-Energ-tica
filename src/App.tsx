@@ -1,7 +1,8 @@
 ﻿import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { BatteryCharging, Building2, Gauge, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
+import { BatteryCharging, Building2, Gauge, Moon, ShieldCheck, Sparkles, Sun, UserPlus } from 'lucide-react';
 import { ALL_UNITS, CHART_DATA, INITIAL_OPPORTUNITIES, PERIODS, UNITS } from './data/demo';
 import { usePersistentState } from './hooks/usePersistentState';
+import { useTheme } from './hooks/useTheme';
 import { computeSummary, isOpportunityList, matchesUnit, nextStatus, scaleSeries, unitShare } from './lib/energy';
 import { formatPercent } from './lib/format';
 import type { NavSection, Opportunity, Period } from './types';
@@ -46,6 +47,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [opportunities, setOpportunities] = usePersistentState(STORAGE_KEY, INITIAL_OPPORTUNITIES, isOpportunityList);
   const deferredSearch = useDeferredValue(search);
+  const { theme, toggleTheme } = useTheme();
 
   // Mantém a seção na URL (#oportunidades etc.) para permitir recarregar e compartilhar links.
   useEffect(() => {
@@ -188,6 +190,12 @@ function App() {
             </button>
           ))}
         </nav>
+
+        <button type="button" role="switch" aria-checked={theme === 'dark'} className="theme-toggle" onClick={toggleTheme}>
+          {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+          Modo escuro
+          <span className="switch" aria-hidden="true" />
+        </button>
 
         <div className="mini-card">
           <p className="label">Meta de eficiência</p>

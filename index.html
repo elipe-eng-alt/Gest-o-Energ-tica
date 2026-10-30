@@ -6,6 +6,18 @@
     <meta name="theme-color" content="#f5f7f4" />
     <meta name="description" content="EnergiaViva — gestão inteligente de energia e oportunidades de eficiência." />
     <title>EnergiaViva | Gestão de energia</title>
+    <script>
+      // Aplica o tema salvo (ou o do sistema) antes da renderização, evitando flash de tema claro.
+      (function () {
+        var theme;
+        try { theme = localStorage.getItem('energia-viva-theme'); } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
+        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0e1513');
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
