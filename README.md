@@ -42,7 +42,7 @@ Sistema web em React + TypeScript para gestão de desperdício e potenciais de e
 | POST | `/api/customers` | Cadastra cliente e notifica o responsável |
 | GET | `/api/customers` | Lista clientes. Exige `Authorization: Bearer <ADMIN_TOKEN>` |
 
-Sem `SMTP_USER`/`SMTP_PASS`, o envio de e-mail é simulado e registrado no console. O banco fica em `data/` (ou em `DATA_DIR`, se definido).
+O aviso de novo cadastro é enviado em segundo plano pelo Resend (`RESEND_API_KEY`, por HTTPS) ou, sem ele, por SMTP (`SMTP_USER`/`SMTP_PASS`). Sem nenhum dos dois, o envio é simulado e registrado no console. No Railway (planos Free/Hobby) o SMTP é bloqueado: use o Resend. O banco fica em `data/` (ou em `DATA_DIR`, se definido).
 
 ## Estrutura
 

@@ -62,25 +62,40 @@ const transporter = hasSmtpCredentials()
       port: Number(process.env.SMTP_PORT || 587),
       secure: Number(process.env.SMTP_PORT || 587) === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     })
   : null;
 
-async function sendOwnerNotification(customer) {
-  const ownerEmail = getOwnerEmail();
+// Resend envia por HTTPS. Hospedagens como o Railway (planos Free/Hobby) bloqueiam SMTP.
+async function sendWithResend(message) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.MAIL_FROM || 'EnergiaViva <onboarding@resend.dev>',
+      to: [message.to],
+      reply_to: message.replyTo,
+      subject: message.subject,
+      text: message.text,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
 
-  if (!transporter) {
-    console.log('Simulando envio de e-mail para o owner:');
-    console.log({
-      to: ownerEmail,
-      subject: 'Novo cliente cadastrado',
-      text: `Novo cadastro: ${customer.name} (${customer.company_name}) - ${customer.email}`,
-    });
-    return { simulated: true };
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Resend respondeu ${response.status}: ${data.message || JSON.stringify(data)}`);
   }
+  return { provider: 'resend', id: data.id };
+}
 
-  const info = await transporter.sendMail({
-    from: process.env.SMTP_USER,
-    to: ownerEmail,
+async function sendOwnerNotification(customer) {
+  const message = {
+    to: getOwnerEmail(),
     replyTo: customer.email,
     subject: 'Novo cliente cadastrado no EnergiaViva',
     text: [
@@ -93,9 +108,19 @@ async function sendOwnerNotification(customer) {
       `Cargo: ${customer.position}`,
       `Setor: ${customer.sector}`,
     ].join('\n'),
-  });
+  };
 
-  return { simulated: false, messageId: info.messageId };
+  if (process.env.RESEND_API_KEY) {
+    return sendWithResend(message);
+  }
+
+  if (transporter) {
+    const info = await transporter.sendMail({ from: process.env.SMTP_USER, ...message });
+    return { provider: 'smtp', id: info.messageId };
+  }
+
+  console.log('Simulando envio de e-mail para o owner:', { to: message.to, subject: message.subject });
+  return { provider: 'simulado' };
 }
 
 function requireAdmin(req, res, next) {
@@ -171,18 +196,12 @@ app.post('/api/customers', async (req, res) => {
 
   const customer = { name: nome, company_name: empresa, email, phone: telefone, position: cargo, sector: setor };
 
-  try {
-    const notification = await sendOwnerNotification(customer);
-    return res.status(201).json({
-      message: 'Cadastro realizado com sucesso. Nossa equipe entrará em contato.',
-      notification,
-    });
-  } catch (mailError) {
-    console.error('Erro ao enviar e-mail:', mailError);
-    return res.status(201).json({
-      message: 'Cadastro realizado com sucesso, mas houve falha ao notificar a equipe.',
-    });
-  }
+  // O cadastro já está salvo: responde na hora e notifica a equipe em segundo plano.
+  res.status(201).json({ message: 'Cadastro realizado com sucesso. Nossa equipe entrará em contato.' });
+
+  sendOwnerNotification(customer)
+    .then((result) => console.log('Notificação de cadastro enviada:', result))
+    .catch((mailError) => console.error('Erro ao enviar e-mail:', mailError.message));
 });
 
 app.use('/api', (req, res) => {
