@@ -6,6 +6,8 @@ Sistema web em React + TypeScript para gestão de desperdício e potenciais de e
 
 - **Área da empresa com login**: o cadastro cria a conta e já entra; cada empresa vê só os próprios dados
 - **Lançamentos**: cadastro de unidades e lançamento mensal por unidade com os dados da fatura (consumo kWh, valor R$, consumo na ponta, demanda máxima e consumo fora do expediente/standby)
+- **Importação de histórico por planilha (CSV)**: modelo para o Excel, prévia antes de gravar, erros por linha, unidades novas criadas automaticamente; aceita formatos brasileiros (`1.234,56`, `08/2026`, `ago/26`) e arquivos salvos pelo Excel em Windows-1252
+- **Recuperação de senha** por e-mail: link de uso único válido por 1 hora; trocar a senha encerra as outras sessões
 - Alertas automáticos a partir dos lançamentos: desperdício acima de 20%, consumo 10% acima do mês anterior e uso alto no horário de ponta
 - Sem login, o sistema mostra dados de demonstração
 - Dashboard executivo com indicadores de consumo, custo e desperdício, filtráveis por período e unidade
@@ -46,11 +48,14 @@ Sistema web em React + TypeScript para gestão de desperdício e potenciais de e
 | POST | `/api/customers` | Cadastra cliente e notifica o responsável |
 | GET | `/api/customers` | Lista clientes. Exige `Authorization: Bearer <ADMIN_TOKEN>` |
 | POST | `/api/auth/login` | Entra (cookie de sessão HttpOnly, 30 dias); limite de 10 tentativas a cada 15 min |
+| POST | `/api/auth/forgot` | Envia link de redefinição de senha (resposta igual exista ou não a conta) |
+| POST | `/api/auth/reset` | Define nova senha com o token do link e entra na conta |
 | POST | `/api/auth/logout` | Sai |
 | GET | `/api/auth/me` | Usuário da sessão atual (ou `null`) |
 | GET | `/api/company/data` | Unidades, lançamentos e oportunidades da empresa logada |
 | POST/PUT/DELETE | `/api/company/units` | Unidades da empresa |
 | PUT | `/api/company/readings` | Cria ou atualiza o lançamento de uma unidade em um mês |
+| POST | `/api/company/readings/import` | Importa lançamentos em lote (tudo ou nada; até 2000 linhas) |
 | DELETE | `/api/company/readings/:id` | Exclui um lançamento |
 | POST/PATCH/DELETE | `/api/company/opportunities` | Oportunidades da empresa |
 

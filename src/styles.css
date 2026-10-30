@@ -1123,6 +1123,61 @@ textarea:focus-visible {
   height: 34px;
 }
 
+.import-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.file-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(43, 138, 103, 0.5);
+  color: var(--primary-dark);
+  font-weight: 700;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.file-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-button:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.import-errors ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-weight: 500;
+}
+
+.import-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.import-preview p {
+  margin: 0;
+}
+
 @media (max-width: 1180px) {
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

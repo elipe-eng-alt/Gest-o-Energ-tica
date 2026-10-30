@@ -2,10 +2,13 @@ export const UNAUTHORIZED_EVENT = 'energia-viva:unauthorized';
 
 export class ApiError extends Error {
   status: number;
+  /** Erros por linha devolvidos pela importação de planilha. */
+  lineErrors: { line: number; message: string }[];
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, lineErrors: { line: number; message: string }[] = []) {
     super(message);
     this.status = status;
+    this.lineErrors = lineErrors;
   }
 }
 
@@ -29,7 +32,7 @@ export async function api<T>(path: string, options: { method?: string; body?: un
     if (response.status === 401 && path.startsWith('/api/company')) {
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
-    throw new ApiError(data.message || 'Erro inesperado. Tente novamente.', response.status);
+    throw new ApiError(data.message || 'Erro inesperado. Tente novamente.', response.status, Array.isArray(data.errors) ? data.errors : []);
   }
   return data as T;
 }

@@ -69,7 +69,16 @@ export function openDatabase(dataDir) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Links de redefinição de senha: só o hash do token, uso único, expiram em 1 hora.
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token_hash TEXT PRIMARY KEY,
+      customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL,
+      used_at INTEGER
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_customer ON sessions (customer_id);
+    CREATE INDEX IF NOT EXISTS idx_password_resets_customer ON password_resets (customer_id);
     CREATE INDEX IF NOT EXISTS idx_readings_customer ON readings (customer_id, month);
     CREATE INDEX IF NOT EXISTS idx_opportunities_customer ON opportunities (customer_id);
   `);

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { openDatabase, isUniqueViolation } from './db.js';
 import { createAuth, createRateLimiter } from './auth.js';
 import { createCompanyRouter } from './company.js';
-import { sendOwnerNotification } from './mail.js';
+import { sendOwnerNotification, sendPasswordReset } from './mail.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +34,9 @@ app.use(express.json({ limit: '100kb' }));
 const auth = createAuth(db);
 const loginAllowed = createRateLimiter({ max: 10, windowMs: 15 * 60 * 1000 });
 const signupAllowed = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
+const forgotAllowedByIp = createRateLimiter({ max: 10, windowMs: 60 * 60 * 1000 });
+const forgotAllowedByEmail = createRateLimiter({ max: 3, windowMs: 60 * 60 * 1000 });
+const resetAllowed = createRateLimiter({ max: 20, windowMs: 15 * 60 * 1000 });
 
 const listCustomers = db.prepare(
   'SELECT id, name, company_name, email, phone, document, sector, position, created_at FROM customers ORDER BY created_at DESC',
@@ -44,6 +47,11 @@ const insertCustomer = db.prepare(
 const findCustomerByEmail = db.prepare(
   'SELECT id, name, company_name AS companyName, email, password_hash AS passwordHash FROM customers WHERE email = ?',
 );
+const findCustomerById = db.prepare('SELECT id, name, company_name AS companyName, email FROM customers WHERE id = ?');
+const updatePassword = db.prepare('UPDATE customers SET password_hash = ? WHERE id = ?');
+
+/** Endereço público do site para links em e-mails. APP_URL evita depender do cabeçalho Host da requisição. */
+const appUrl = (req) => (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 
 function requireAdmin(req, res, next) {
   const token = process.env.ADMIN_TOKEN;
@@ -149,6 +157,60 @@ app.post('/api/auth/login', async (req, res) => {
 
   auth.startSession(req, res, customer.id);
   res.json({ user: { id: customer.id, name: customer.name, companyName: customer.companyName, email: customer.email } });
+});
+
+const FORGOT_MESSAGE =
+  'Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha. Ele vale por 1 hora; confira também a caixa de spam.';
+
+app.post('/api/auth/forgot', (req, res) => {
+  const email = asText(req.body?.email).toLowerCase();
+  if (!EMAIL_PATTERN.test(email)) {
+    return res.status(400).json({ message: 'Informe um e-mail válido.' });
+  }
+
+  if (!forgotAllowedByIp(req.ip)) {
+    return res.status(429).json({ message: 'Muitos pedidos. Tente novamente mais tarde.' });
+  }
+
+  // Mesma resposta exista ou não a conta, para não revelar quais e-mails estão cadastrados.
+  res.json({ message: FORGOT_MESSAGE });
+
+  const customer = findCustomerByEmail.get(email);
+  if (!customer || !forgotAllowedByEmail(email)) return;
+
+  const token = auth.createPasswordReset(customer.id);
+  const link = `${appUrl(req)}/?token=${encodeURIComponent(token)}#redefinir`;
+  sendPasswordReset({ to: customer.email, name: customer.name, link })
+    .then((result) => console.log('E-mail de redefinição de senha:', { customerId: customer.id, ...result }))
+    .catch((mailError) => console.error('Erro ao enviar e-mail de redefinição:', mailError.message));
+});
+
+app.post('/api/auth/reset', async (req, res) => {
+  const senha = typeof req.body?.senha === 'string' ? req.body.senha : '';
+
+  if (!resetAllowed(req.ip)) {
+    return res.status(429).json({ message: 'Muitas tentativas. Aguarde alguns minutos.' });
+  }
+
+  if (senha.length < 8) {
+    return res.status(400).json({ message: 'A senha deve ter pelo menos 8 caracteres.' });
+  }
+
+  if (senha !== req.body?.confirmarSenha) {
+    return res.status(400).json({ message: 'As senhas não conferem.' });
+  }
+
+  const passwordHash = await bcrypt.hash(senha, 10);
+  const customerId = auth.consumePasswordReset(req.body?.token);
+  if (!customerId) {
+    return res.status(400).json({ message: 'Este link é inválido, já foi usado ou expirou. Peça um novo em "Esqueci minha senha".' });
+  }
+
+  updatePassword.run(passwordHash, customerId);
+  // Senha trocada: encerra todas as sessões abertas e entra só neste navegador.
+  auth.endAllSessions(customerId);
+  auth.startSession(req, res, customerId);
+  res.json({ message: 'Senha alterada com sucesso.', user: findCustomerById.get(customerId) });
 });
 
 app.post('/api/auth/logout', (req, res) => {

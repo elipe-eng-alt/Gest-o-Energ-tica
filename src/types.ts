@@ -1,6 +1,6 @@
 export type Status = 'pendente' | 'em andamento' | 'concluída';
 export type Priority = 'alta' | 'media' | 'baixa';
-export type NavSection = 'dashboard' | 'lancamentos' | 'oportunidades' | 'unidades' | 'relatorios' | 'cadastro' | 'entrar';
+export type NavSection = 'dashboard' | 'lancamentos' | 'oportunidades' | 'unidades' | 'relatorios' | 'cadastro' | 'entrar' | 'redefinir';
 
 export type PeriodOption = { id: string; short: string; label: string };
 

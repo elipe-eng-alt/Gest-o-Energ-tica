@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 const COOKIE_NAME = 'ev_session';
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+const RESET_MS = 60 * 60 * 1000;
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
@@ -49,7 +50,37 @@ export function createAuth(db) {
     next();
   }
 
-  return { startSession, endSession, currentUser, requireUser };
+  const insertReset = db.prepare('INSERT INTO password_resets (token_hash, customer_id, expires_at) VALUES (?, ?, ?)');
+  const purgeResets = db.prepare('DELETE FROM password_resets WHERE expires_at <= ? OR used_at IS NOT NULL');
+  // Marca como usado e devolve o dono numa única instrução: o mesmo link não funciona duas vezes.
+  const consumeResetStmt = db.prepare(`
+    UPDATE password_resets SET used_at = ?
+    WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?
+    RETURNING customer_id AS customerId
+  `);
+  const cancelResets = db.prepare('UPDATE password_resets SET used_at = ? WHERE customer_id = ? AND used_at IS NULL');
+  const deleteSessionsOf = db.prepare('DELETE FROM sessions WHERE customer_id = ?');
+
+  function createPasswordReset(customerId) {
+    purgeResets.run(Date.now());
+    const token = crypto.randomBytes(32).toString('base64url');
+    insertReset.run(hashToken(token), customerId, Date.now() + RESET_MS);
+    return token;
+  }
+
+  /** Valida o link; se válido, invalida todos os links pendentes da conta e devolve o id do cliente. */
+  function consumePasswordReset(token) {
+    if (typeof token !== 'string' || !token) return null;
+    const now = Date.now();
+    const row = consumeResetStmt.get(now, hashToken(token), now);
+    if (!row) return null;
+    cancelResets.run(now, row.customerId);
+    return row.customerId;
+  }
+
+  const endAllSessions = (customerId) => deleteSessionsOf.run(customerId);
+
+  return { startSession, endSession, currentUser, requireUser, createPasswordReset, consumePasswordReset, endAllSessions };
 }
 
 /** Limitador simples em memória: no máximo `max` tentativas por chave a cada `windowMs`. */

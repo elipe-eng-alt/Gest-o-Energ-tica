@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { PanelHead } from '../components/Controls';
+import ImportReadings from '../components/ImportReadings';
 import { errorMessage } from '../lib/api';
 import { monthLabel } from '../lib/company';
 import { CURRENCY } from '../lib/format';
@@ -292,6 +293,8 @@ export default function DataEntrySection({ data, mutate }: Props) {
           </form>
         )}
       </section>
+
+      <ImportReadings data={data} mutate={mutate} />
 
       <section className="panel">
         <PanelHead label="Histórico" title="Lançamentos registrados">

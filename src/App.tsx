@@ -4,6 +4,7 @@ import {
   Building2,
   ClipboardList,
   Gauge,
+  KeyRound,
   LogIn,
   LogOut,
   Moon,
@@ -31,6 +32,7 @@ const UnitsSection = lazy(() => import('./sections/UnitsSection'));
 const ReportsSection = lazy(() => import('./sections/ReportsSection'));
 const RegisterSection = lazy(() => import('./sections/RegisterSection'));
 const LoginSection = lazy(() => import('./sections/LoginSection'));
+const ResetPasswordSection = lazy(() => import('./sections/ResetPasswordSection'));
 
 const STORAGE_KEY = 'energia-viva-dashboard';
 const EFFICIENCY_TARGET = 25;
@@ -43,10 +45,13 @@ const NAV_ITEMS: Record<NavSection, { label: string; icon: JSX.Element }> = {
   relatorios: { label: 'Relatórios', icon: <ShieldCheck size={18} /> },
   cadastro: { label: 'Criar conta', icon: <UserPlus size={18} /> },
   entrar: { label: 'Entrar', icon: <LogIn size={18} /> },
+  redefinir: { label: 'Redefinir senha', icon: <KeyRound size={18} /> },
 };
 
-const GUEST_SECTIONS: NavSection[] = ['dashboard', 'oportunidades', 'unidades', 'relatorios', 'cadastro', 'entrar'];
-const COMPANY_SECTIONS: NavSection[] = ['dashboard', 'lancamentos', 'oportunidades', 'unidades', 'relatorios'];
+const GUEST_MENU: NavSection[] = ['dashboard', 'oportunidades', 'unidades', 'relatorios', 'cadastro', 'entrar'];
+const COMPANY_MENU: NavSection[] = ['dashboard', 'lancamentos', 'oportunidades', 'unidades', 'relatorios'];
+// Telas fora do menu, abertas por link (ex.: o link de redefinição de senha enviado por e-mail).
+const HIDDEN_SECTIONS: NavSection[] = ['redefinir'];
 
 const SECTION_TITLES: Record<NavSection, string> = {
   dashboard: 'Monitoramento de desperdício e eficiência',
@@ -56,6 +61,7 @@ const SECTION_TITLES: Record<NavSection, string> = {
   relatorios: 'Relatórios e indicadores executivos',
   cadastro: 'Crie a conta da sua empresa',
   entrar: 'Bem-vindo de volta',
+  redefinir: 'Redefinição de senha',
 };
 
 const isSection = (value: string): value is NavSection => value in NAV_ITEMS;
@@ -70,6 +76,7 @@ function App() {
   const [unitFilter, setUnitFilter] = useState(ALL_UNITS);
   const [activeSection, setActiveSection] = useState<NavSection>(sectionFromHash);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [resetToken] = useState(() => new URLSearchParams(window.location.search).get('token'));
   const [demoOpportunities, setDemoOpportunities] = usePersistentState(STORAGE_KEY, INITIAL_OPPORTUNITIES, isOpportunityList);
   const deferredSearch = useDeferredValue(search);
   const { theme, toggleTheme } = useTheme();
@@ -93,8 +100,8 @@ function App() {
   }, []);
 
   // Seção pedida que não existe no modo atual (ex.: "Lançamentos" sem login) cai na mais próxima.
-  const allowedSections = isCompany ? COMPANY_SECTIONS : GUEST_SECTIONS;
-  const section: NavSection = allowedSections.includes(activeSection)
+  const menuSections = isCompany ? COMPANY_MENU : GUEST_MENU;
+  const section: NavSection = [...menuSections, ...HIDDEN_SECTIONS].includes(activeSection)
     ? activeSection
     : activeSection === 'lancamentos'
       ? 'entrar'
@@ -209,6 +216,16 @@ function App() {
     [auth, navigate],
   );
 
+  const handleResetDone = useCallback(
+    (user: User) => {
+      // Remove o token da barra de endereço depois de usado.
+      window.history.replaceState(null, '', window.location.pathname);
+      auth.signIn(user);
+      navigate('dashboard');
+    },
+    [auth, navigate],
+  );
+
   const handleLogout = async () => {
     await auth.logout();
     navigate('dashboard');
@@ -297,6 +314,8 @@ function App() {
         return <RegisterSection onRegistered={handleRegistered} onGoToLogin={() => navigate('entrar')} />;
       case 'entrar':
         return <LoginSection onLogin={handleLogin} onGoToRegister={() => navigate('cadastro')} />;
+      case 'redefinir':
+        return <ResetPasswordSection token={resetToken} onDone={handleResetDone} onRequestNewLink={() => navigate('entrar')} />;
       default:
         if (isCompany && companyData && !companyData.readings.length) {
           return (
@@ -339,7 +358,7 @@ function App() {
 
   const showPeriodControl = section === 'dashboard' || section === 'relatorios';
   const showReportButton = section === 'dashboard' || section === 'oportunidades' || section === 'unidades' || section === 'relatorios';
-  const showDemoBanner = !isCompany && section !== 'cadastro' && section !== 'entrar';
+  const showDemoBanner = !isCompany && section !== 'cadastro' && section !== 'entrar' && section !== 'redefinir';
 
   return (
     <div className="app-shell">
@@ -355,7 +374,7 @@ function App() {
         </div>
 
         <nav className="nav" aria-label="Seções">
-          {allowedSections.map((id) => (
+          {menuSections.map((id) => (
             <button
               key={id}
               type="button"

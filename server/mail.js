@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 
 const getOwnerEmail = () => process.env.OWNER_EMAIL || 'owner@empresa.com';
+const isProduction = () => process.env.NODE_ENV === 'production';
 
 let transporter;
 function getTransporter() {
@@ -46,8 +47,28 @@ async function sendWithResend(message) {
   return { provider: 'resend', id: data.id };
 }
 
-export async function sendOwnerNotification(customer) {
-  const message = {
+/** Envia pelo Resend, pelo SMTP ou, sem nenhum configurado, apenas registra no log. */
+async function sendMail(message, { logText = true } = {}) {
+  if (process.env.RESEND_API_KEY) {
+    return sendWithResend(message);
+  }
+
+  const smtp = getTransporter();
+  if (smtp) {
+    const info = await smtp.sendMail({ from: process.env.SMTP_USER, ...message });
+    return { provider: 'smtp', id: info.messageId };
+  }
+
+  console.log('E-mail não enviado (configure RESEND_API_KEY ou SMTP):', {
+    to: message.to,
+    subject: message.subject,
+    ...(logText ? { text: message.text } : {}),
+  });
+  return { provider: 'simulado' };
+}
+
+export function sendOwnerNotification(customer) {
+  return sendMail({
     to: getOwnerEmail(),
     replyTo: customer.email,
     subject: 'Novo cliente cadastrado no EnergiaViva',
@@ -61,18 +82,26 @@ export async function sendOwnerNotification(customer) {
       `Cargo: ${customer.position}`,
       `Setor: ${customer.sector}`,
     ].join('\n'),
-  };
+  });
+}
 
-  if (process.env.RESEND_API_KEY) {
-    return sendWithResend(message);
-  }
-
-  const smtp = getTransporter();
-  if (smtp) {
-    const info = await smtp.sendMail({ from: process.env.SMTP_USER, ...message });
-    return { provider: 'smtp', id: info.messageId };
-  }
-
-  console.log('Simulando envio de e-mail para o owner:', { to: message.to, subject: message.subject });
-  return { provider: 'simulado' };
+export function sendPasswordReset({ to, name, link }) {
+  return sendMail(
+    {
+      to,
+      subject: 'Redefinição de senha — EnergiaViva',
+      text: [
+        `Olá, ${name}.`,
+        '',
+        'Recebemos um pedido para redefinir a senha da sua conta no EnergiaViva.',
+        'Para criar uma nova senha, abra o link abaixo (válido por 1 hora, uso único):',
+        '',
+        link,
+        '',
+        'Se você não pediu a redefinição, ignore este e-mail: sua senha continua a mesma.',
+      ].join('\n'),
+    },
+    // Em produção o link nunca vai para o log: ele dá acesso à conta.
+    { logText: !isProduction() },
+  );
 }

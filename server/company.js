@@ -16,6 +16,27 @@ function number(value) {
 
 const badRequest = (res, message) => res.status(400).json({ message });
 
+const MAX_IMPORT_ROWS = 2000;
+
+/** Valida os campos de um lançamento. Devolve { error } ou { values } prontos para gravar. */
+function validateReading(body) {
+  const month = text(body.month, 7);
+  const consumption = number(body.consumptionKwh);
+  const cost = number(body.cost);
+  const peak = number(body.peakKwh);
+  const demand = number(body.demandKw);
+  const offHours = number(body.offHoursKwh);
+
+  if (!MONTH_PATTERN.test(month)) return { error: 'Informe o mês de referência.' };
+  if (!consumption) return { error: 'Informe o consumo total do mês (maior que zero).' };
+  if (cost === null || Number.isNaN(cost)) return { error: 'Informe o valor da fatura.' };
+  if ([peak, demand, offHours].some(Number.isNaN)) return { error: 'Os valores opcionais devem ser números positivos.' };
+  if ((peak ?? 0) > consumption) return { error: 'O consumo na ponta não pode ser maior que o consumo total.' };
+  if ((offHours ?? 0) > consumption) return { error: 'O consumo fora do expediente não pode ser maior que o consumo total.' };
+
+  return { values: { month, consumption, cost, peak, demand, offHours, notes: text(body.notes, 500) } };
+}
+
 /** Rotas da área logada. Toda consulta filtra pela empresa da sessão (req.user.id). */
 export function createCompanyRouter(db, requireUser) {
   const router = express.Router();
@@ -100,26 +121,90 @@ export function createCompanyRouter(db, requireUser) {
     sendData(req, res);
   });
 
+  const saveReading = (customerId, unitId, v) =>
+    q.upsertReading.run(customerId, unitId, v.month, v.consumption, v.cost, v.peak, v.demand, v.offHours, v.notes);
+
   router.put('/readings', (req, res) => {
     const body = req.body ?? {};
     const unitId = Number(body.unitId);
-    const month = text(body.month, 7);
-    const consumption = number(body.consumptionKwh);
-    const cost = number(body.cost);
-    const peak = number(body.peakKwh);
-    const demand = number(body.demandKw);
-    const offHours = number(body.offHoursKwh);
-
     if (!ownsUnit(req, unitId)) return badRequest(res, 'Selecione uma unidade válida.');
-    if (!MONTH_PATTERN.test(month)) return badRequest(res, 'Informe o mês de referência.');
-    if (!consumption) return badRequest(res, 'Informe o consumo total do mês (maior que zero).');
-    if (cost === null || Number.isNaN(cost)) return badRequest(res, 'Informe o valor da fatura.');
-    if ([peak, demand, offHours].some(Number.isNaN)) return badRequest(res, 'Os valores opcionais devem ser números positivos.');
-    if ((peak ?? 0) > consumption) return badRequest(res, 'O consumo na ponta não pode ser maior que o consumo total.');
-    if ((offHours ?? 0) > consumption) return badRequest(res, 'O consumo fora do expediente não pode ser maior que o consumo total.');
 
-    q.upsertReading.run(req.user.id, unitId, month, consumption, cost, peak, demand, offHours, text(body.notes, 500));
+    const { error, values } = validateReading(body);
+    if (error) return badRequest(res, error);
+
+    saveReading(req.user.id, unitId, values);
     sendData(req, res);
+  });
+
+  /**
+   * Importação em lote (planilha). Tudo ou nada: com qualquer linha inválida nada é gravado
+   * e a resposta lista os erros por linha. Unidades que ainda não existem são criadas.
+   */
+  router.post('/readings/import', (req, res) => {
+    const rows = req.body?.rows;
+    if (!Array.isArray(rows) || rows.length === 0) return badRequest(res, 'A planilha não tem linhas para importar.');
+    if (rows.length > MAX_IMPORT_ROWS) return badRequest(res, `Importe no máximo ${MAX_IMPORT_ROWS} linhas por vez.`);
+
+    const unitsByName = new Map(q.units.all(req.user.id).map((unit) => [unit.name.toLocaleLowerCase('pt-BR'), unit]));
+    const existingKeys = new Set(q.readings.all(req.user.id).map((reading) => `${reading.unitId}|${reading.month}`));
+    const newUnits = new Map();
+    const seen = new Map();
+    const errors = [];
+    const valid = [];
+
+    rows.forEach((row, index) => {
+      const line = Number.isInteger(row?.line) ? row.line : index + 2;
+      const unitName = text(row?.unit, 80);
+      if (!unitName) {
+        errors.push({ line, message: 'Unidade não informada.' });
+        return;
+      }
+      const { error, values } = validateReading(row);
+      if (error) {
+        errors.push({ line, message: error });
+        return;
+      }
+      const key = `${unitName.toLocaleLowerCase('pt-BR')}|${values.month}`;
+      if (seen.has(key)) {
+        errors.push({ line, message: `Mês repetido para esta unidade (já está na linha ${seen.get(key)}).` });
+        return;
+      }
+      seen.set(key, line);
+      const unitKey = unitName.toLocaleLowerCase('pt-BR');
+      if (!unitsByName.has(unitKey) && !newUnits.has(unitKey)) newUnits.set(unitKey, unitName);
+      valid.push({ unitKey, values });
+    });
+
+    if (errors.length) {
+      return res.status(400).json({ message: `Nada foi importado: ${errors.length} linha(s) com erro.`, errors: errors.slice(0, 50) });
+    }
+
+    let created = 0;
+    let updated = 0;
+    db.exec('BEGIN');
+    try {
+      for (const [unitKey, name] of newUnits) {
+        const id = Number(q.insertUnit.run(req.user.id, name, '').lastInsertRowid);
+        unitsByName.set(unitKey, { id, name, sector: '' });
+      }
+      for (const { unitKey, values } of valid) {
+        const unitId = unitsByName.get(unitKey).id;
+        if (existingKeys.has(`${unitId}|${values.month}`)) updated += 1;
+        else created += 1;
+        saveReading(req.user.id, unitId, values);
+      }
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+
+    res.json({
+      units: q.units.all(req.user.id),
+      readings: q.readings.all(req.user.id),
+      opportunities: q.opportunities.all(req.user.id),
+      imported: { created, updated, unitsCreated: [...newUnits.values()] },
+    });
   });
 
   router.delete('/readings/:id', (req, res) => {
