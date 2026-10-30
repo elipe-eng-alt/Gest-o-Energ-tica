@@ -13,4 +13,18 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa bibliotecas pesadas em chunks próprios, melhorando cache entre deploys.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react'
+          if (/node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|recharts-scale)[\\/]/.test(id)) return 'charts'
+          if (id.includes('lucide-react')) return 'icons'
+          return undefined
+        },
+      },
+    },
+  },
 })
